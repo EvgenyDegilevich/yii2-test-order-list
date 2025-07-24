@@ -29,11 +29,14 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-enable xdebug \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Install Composer globally
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Copy application files first
+COPY application /var/www/html
+
 # Copy vendor dependencies from composer stage
 COPY --from=vendor /app/vendor /var/www/html/vendor
-
-# Copy application files
-COPY application /var/www/html
 
 # Convert line endings for shell scripts and config files
 RUN find /var/www/html \
@@ -43,7 +46,7 @@ RUN find /var/www/html \
 
 # Create necessary directories and set permissions
 RUN mkdir -p /var/www/html/runtime /var/www/html/web/assets \
-    && chown -R www-data:www-data /var/www/html/runtime /var/www/html/web/assets \
+    && chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/runtime /var/www/html/web/assets
 
 WORKDIR /var/www/html
