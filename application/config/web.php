@@ -43,16 +43,40 @@ $config = [
             ],
         ],
         'db' => $db,
-        /*
         'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
+                'orders' => 'orders/default/index',
+                'orders/<status:(pending|inprogress|completed|cancelled|failed)>' => 'orders/default/index',
+                'orders/export' => 'orders/default/export',
             ],
         ],
-        */
+        'i18n' => [
+            'translations' => [
+                'orders*' => [
+                    'class' => 'yii\i18n\PhpMessageSource',
+                    'basePath' => '@app/messages',
+                    'sourceLanguage' => 'en-US',
+                    'forceTranslation' => true,
+                    'fileMap' => [
+                        'orders' => 'orders.php',
+                    ],
+                ],
+            ],
+        ],'assetManager' => [
+            'bundles' => [
+                'yii\bootstrap5\BootstrapAsset' => false,
+                'yii\bootstrap5\BootstrapPluginAsset' => false,
+            ],
+        ],
     ],
     'params' => $params,
+    'modules' => [
+        'orders' => [
+            'class' => 'app\modules\orders\OrdersModule',
+        ],
+    ],
 ];
 
 if (($_ENV['APP_DEBUG'] ?? 'true') === 'true' && ($_ENV['APP_ENV'] ?? 'dev') === 'dev') {
@@ -60,14 +84,14 @@ if (($_ENV['APP_DEBUG'] ?? 'true') === 'true' && ($_ENV['APP_ENV'] ?? 'dev') ===
     $config['modules']['debug'] = [
         'class' => 'yii\debug\Module',
         // uncomment the following to add your IP if you are not connecting from localhost.
-        'allowedIPs' => ['127.0.0.1', '::1', '172.*', '192.168.*'],
+        'allowedIPs' => ['127.0.0.1', '::1', '172.*', '192.168.*', '185.59.220.198'],
     ];
 
     $config['bootstrap'][] = 'gii';
     $config['modules']['gii'] = [
         'class' => 'yii\gii\Module',
         // uncomment the following to add your IP if you are not connecting from localhost.
-        'allowedIPs' => ['127.0.0.1', '::1', '172.*', '192.168.*'],
+        'allowedIPs' => ['127.0.0.1', '::1', '172.*', '192.168.*', '185.59.220.198'],
     ];
 }
 
