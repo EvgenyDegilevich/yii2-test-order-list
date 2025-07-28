@@ -4,6 +4,7 @@ namespace app\modules\orders\models;
 
 use app\models\Services;
 use app\models\Users;
+use app\modules\orders\validators\SearchValidator;
 use yii\base\Model;
 use yii\data\ActiveDataProvider;
 use app\models\Orders;
@@ -25,7 +26,7 @@ use app\enums\OrderSearchType;
  *
  * @package app\modules\orders\models
  */
-class OrdersSearch extends Orders
+class OrdersSearch extends Model
 {
 
     /** Сценарий для поиска с дополнительной валидацией */
@@ -43,48 +44,26 @@ class OrdersSearch extends Orders
      */
     public $search_type;
 
+    public $id;
+    public $status;
+    public $service_id;
+    public $mode;
+
     /**
      * {@inheritdoc}
      */
     public function rules(): array
     {
         return [
-            [['id', 'service_id', 'status', 'created_at', 'mode'], 'integer'],
+            [['id', 'service_id', 'status', 'mode'], 'integer'],
             
-            [['search'], 'string', 'max' => 255, 'on' => self::SCENARIO_SEARCH],
-            [['search'], 'trim', 'on' => self::SCENARIO_SEARCH],
-            [['search'], 'required', 'on' => self::SCENARIO_SEARCH],
-            [['search_type'], 'integer', 'on' => self::SCENARIO_SEARCH],
-            [['search_type'], 'in', 'range' => OrderSearchType::values(), 'on' => self::SCENARIO_SEARCH],
-            
-            [['search'], 'integer', 'min' => 1, 'on' => self::SCENARIO_SEARCH, 'when' => function($model) {
-                return $model->search_type == OrderSearchType::ORDER_ID->value;
-            }, 'whenClient' => "function (attribute, value) {
-                return $('#orderssearch-search_type').val() == '" . OrderSearchType::ORDER_ID->value . "';
-            }"],
-            
-            [['search'], 'url', 'on' => self::SCENARIO_SEARCH, 'when' => function($model) {
-                return $model->search_type == OrderSearchType::LINK->value;
-            }, 'whenClient' => "function (attribute, value) {
-                return $('#orderssearch-search_type').val() == '" . OrderSearchType::LINK->value . "';
-            }"],
-            
-            [['search'], 'string', 'min' => 2, 'max' => 50, 'on' => self::SCENARIO_SEARCH, 'when' => function($model) {
-                return $model->search_type == OrderSearchType::USERNAME->value;
-            }, 'whenClient' => "function (attribute, value) {
-                return $('#orderssearch-search_type').val() == '" . OrderSearchType::USERNAME->value . "';
-            }"],
-        ];
-    }
+            [['search'], 'string', 'max' => 255],
+            [['search'], 'trim'],
+            [['search'], 'required'],
+            [['search_type'], 'integer'],
 
-    /**
-     * {@inheritdoc}
-     */
-    public function scenarios(): array
-    {
-        $scenarios = Model::scenarios();
-        $scenarios[self::SCENARIO_SEARCH] = ['search', 'search_type', 'service_id', 'status', 'mode'];
-        return $scenarios;
+            [['search'], SearchValidator::class],
+        ];
     }
 
     /**
