@@ -14,13 +14,33 @@ use yii\web\NotFoundHttpException;
 use app\enums\OrderSearchType;
 
 /**
- * OrdersSearch represents the model behind the search form of `app\models\Orders`.
+ * Модель поиска заказов
+ *
+ * Представляет модель для формы поиска и фильтрации заказов.
+ * Расширяет базовую модель Orders, добавляя функциональность поиска
+ * по различным критериям с валидацией и построением запросов.
+ *
+ * @property string|null $search Поисковый запрос
+ * @property int|null $search_type Тип поиска
+ *
+ * @package app\modules\orders\models
  */
 class OrdersSearch extends Orders
 {
+
+    /** Сценарий для поиска с дополнительной валидацией */
     const SCENARIO_SEARCH = 'search';
 
+    /**
+     * Поисковый запрос пользователя
+     * @var string|null
+     */
     public $search;
+
+    /**
+     * Тип поиска
+     * @var int|null
+     */
     public $search_type;
 
     /**
@@ -60,7 +80,7 @@ class OrdersSearch extends Orders
     /**
      * {@inheritdoc}
      */
-    public function scenarios()
+    public function scenarios(): array
     {
         $scenarios = Model::scenarios();
         $scenarios[self::SCENARIO_SEARCH] = ['search', 'search_type', 'service_id', 'status', 'mode'];
@@ -68,12 +88,15 @@ class OrdersSearch extends Orders
     }
 
     /**
-     * Creates data provider instance with search query applied
+     * Создать провайдер данных с примененными фильтрами поиска
      *
-     * @param array $params
-     * @param string|null $formName Form name to be used into `->load()` method.
+     * Основной метод для получения отфильтрованных данных заказов.
+     * Применяет все доступные фильтры и создает пагинированный результат.
      *
-     * @return ActiveDataProvider
+     * @param array $params Параметры запроса из контроллера
+     * @param string|null $formName Имя формы для загрузки данных
+     * @return ActiveDataProvider Провайдер данных с примененными фильтрами
+     * @throws NotFoundHttpException
      */
     public function search(array $params, ?string $formName = null): ActiveDataProvider
     {
@@ -107,6 +130,15 @@ class OrdersSearch extends Orders
         return $dataProvider;
     }
 
+    /**
+     * Проверить и активировать сценарий поиска при необходимости
+     *
+     * Автоматически переключает модель в сценарий поиска, если в параметрах
+     * присутствуют поисковые поля.
+     *
+     * @param array $params Параметры запроса
+     * @return void
+     */
     public function checkSearchScenarioActivation(array $params): void
     {
         if (
@@ -120,6 +152,16 @@ class OrdersSearch extends Orders
         }
     }
 
+    /**
+     * Получить данные для фильтра по сервисам
+     *
+     * Возвращает список всех доступных сервисов с количеством заказов
+     * для каждого сервиса с учетом текущих фильтров. Сервисы сортируются
+     * по убыванию количества заказов.
+     *
+     * @return array{totalCount: int, services: array<int, array{name: string, count: int}>}
+     *         Массив с общим количеством и данными по сервисам
+     */
     public function getServiceFilterData(): array
     {
         $totalCountQuery = Orders::find()
@@ -164,6 +206,16 @@ class OrdersSearch extends Orders
         ];
     }
 
+    /**
+     * Установить статус из URL параметра
+     *
+     * Преобразует строковый slug статуса из URL обратно в числовое значение
+     * и устанавливает его в модель. Выбрасывает исключение для неизвестных статусов.
+     *
+     * @param array $params Параметры запроса
+     * @return void
+     * @throws NotFoundHttpException Если статус не найден
+     */
     protected function setStatus(array $params): void
     {
         if (!empty($params['status'])) {
@@ -175,6 +227,16 @@ class OrdersSearch extends Orders
         }
     }
 
+    /**
+     * Применить поисковые фильтры к запросу
+     *
+     * Добавляет к запросу условия поиска в зависимости от выбранного типа поиска.
+     * Обрабатывает различные типы поиска: по ID, ссылке и имени пользователя.
+     *
+     * @param Query $query Запрос для модификации
+     * @param bool $isExport Флаг экспорта (влияет на JOIN'ы)
+     * @return void
+     */
     private function applySearchFilters(Query $query, bool $isExport = false): void
     {
         if (empty($this->search)) {
@@ -202,7 +264,18 @@ class OrdersSearch extends Orders
         }
     }
 
-    public function getQueryForExport(array $params)
+    /**
+     * Получить запрос для экспорта данных
+     *
+     * Создает оптимизированный запрос для экспорта большого количества данных
+     * в CSV формат. Использует прямой SQL запрос вместо ActiveRecord для
+     * лучшей производительности.
+     *
+     * @param array $params Параметры фильтрации
+     * @return Query Подготовленный запрос для экспорта
+     * @throws NotFoundHttpException
+     */
+    public function getQueryForExport(array $params): Query
     {
         $this->checkSearchScenarioActivation($params);
         $this->load($params);
