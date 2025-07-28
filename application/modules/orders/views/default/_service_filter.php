@@ -3,8 +3,11 @@
 use yii\helpers\Html;
 use app\helpers\OrderHelper;
 
-/* @var $filterData array */
-/* @var $searchParams array */
+/**
+ * @var $services array
+ * @var $filterServiceId ?int
+ * @var $totalCount int
+ */
 ?>
 
 <div class="dropdown">
@@ -13,16 +16,24 @@ use app\helpers\OrderHelper;
         <span class="caret"></span>
     </button>
     <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-        <li class="<?= empty($searchParams['service_id']) ? 'active' : '' ?>">
-            <a href="<?= OrderHelper::createServiceFilterUrl(null, $searchParams) ?>">
-                <?= Yii::t('orders', 'All') ?> (<?= $filterData['totalCount'] ?? 0 ?>)
+        <li class="<?= empty($filterServiceId) ? 'active' : '' ?>">
+            <a href="<?= OrderHelper::createFilterUrl('service_id') ?>">
+                <?= Yii::t('orders', 'All') ?> (<?= $totalCount ?? 0 ?>)
             </a>
         </li>
-        <?php foreach ($filterData['serviceCounts'] as $serviceData): ?>
-            <li class="<?= ($searchParams['service_id'] ?? null) == $serviceData['service_id'] ? 'active' : '' ?>">
-                <a href="<?= OrderHelper::createServiceFilterUrl($serviceData['service_id'], $searchParams) ?>">
-                    <span class="label-id"><?= $serviceData['service_id'] ?></span>
-                    <?= Html::encode($serviceData['name']) ?> (<?= $serviceData['count'] ?>)
+        <?php foreach ($services as $serviceId => $serviceData): ?>
+            <?php
+            $liClass = '';
+            if ($filterServiceId == $serviceId) {
+                $liClass = 'active';
+            } elseif ($serviceData['count'] == 0) {
+                $liClass = 'disabled';
+            }
+            ?>
+            <li class="<?= $liClass ?>">
+                <a href="<?= OrderHelper::createFilterUrl('service_id', $serviceId) ?>">
+                    <span class="label-id"><?= $serviceData['count'] ?></span>
+                    <?= Html::encode($serviceData['name']) ?>
                 </a>
             </li>
         <?php endforeach; ?>

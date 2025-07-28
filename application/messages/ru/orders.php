@@ -16,6 +16,7 @@ return [
     'Order ID' => 'ID заказа',
     'Username' => 'Имя пользователя',
     'Toggle navigation' => 'Переключить навигацию',
+    'Save Result' => 'Сохранить результат',
 
     // Статусы заказов
     'Pending' => 'В ожидании',
@@ -23,7 +24,7 @@ return [
     'Completed' => 'Завершено',
     'Canceled' => 'Отменено',
     'Cancelled' => 'Отменено',
-    'Error' => 'Ошибка',
+    'Failed' => 'Ошибка',
 
     // Режимы
     'Auto' => 'Авто',
@@ -47,6 +48,5 @@ return [
     'All modes' => 'Все режимы',
 
     // Пагинация
-    'Showing {start}-{end} of {total} results' => 'Показано {start}-{end} из {total}',
-    'Total: {total} records' => 'Всего: {total} записей',
+    'summary' => '{start}-{end} из {total}',
 ];

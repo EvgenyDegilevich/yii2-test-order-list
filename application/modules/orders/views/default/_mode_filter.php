@@ -3,8 +3,9 @@
 use app\enums\OrderMode;
 use app\helpers\OrderHelper;
 
-/* @var $filterData array */
-/* @var $searchParams array */
+/**
+ * @var $filterMode ?int
+ */
 ?>
 
 <div class="dropdown">
@@ -13,24 +14,23 @@ use app\helpers\OrderHelper;
         <span class="caret"></span>
     </button>
     <ul class="dropdown-menu" aria-labelledby="dropdownMenu2">
-        <li class="<?= !isset($searchParams['mode']) ? 'active' : '' ?>">
-            <a href="<?= OrderHelper::createModeFilterUrl(null, $searchParams) ?>">
+        <li class="<?= !isset($filterMode) ? 'active' : '' ?>">
+            <a href="<?= OrderHelper::createFilterUrl('mode') ?>">
                 <?= Yii::t('orders', 'All') ?>
             </a>
         </li>
         <?php foreach (OrderMode::cases() as $modeEnum): ?>
             <?php
-            $count = $filterData['modeCounts'][$modeEnum->value] ?? 0;
             $classActive = '';
 
-            if (isset($searchParams['mode'])) {
-                $classActive = $searchParams['mode'] == $modeEnum->value ? 'active' : '';
+            if (isset($filterMode)) {
+                $classActive = $filterMode == $modeEnum->value ? 'active' : '';
             }
             ?>
 
             <li class="<?= $classActive ?>">
-                <a href="<?= OrderHelper::createModeFilterUrl($modeEnum->value, $searchParams) ?>">
-                    <?= $modeEnum->getLabel() ?> (<?= $count ?>)
+                <a href="<?= OrderHelper::createFilterUrl('mode', $modeEnum->value ) ?>">
+                    <?= $modeEnum->getLabel() ?>
                 </a>
             </li>
         <?php endforeach; ?>

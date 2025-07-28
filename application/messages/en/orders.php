@@ -47,6 +47,5 @@ return [
     'All modes' => 'All modes',
 
     // Пагинация
-    'Showing {start}-{end} of {total} results' => 'Showing {start}-{end} of {total} results',
-    'Total: {total} records' => 'Total: {total} records',
+    'summary' => '{start} to {end} of {total}',
 ];

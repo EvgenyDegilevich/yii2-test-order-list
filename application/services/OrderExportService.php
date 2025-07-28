@@ -2,9 +2,11 @@
 
 namespace app\services;
 
+use app\modules\orders\models\OrdersSearch;
 use Yii;
 use app\repositories\OrderRepository;
 use app\helpers\OrderHelper;
+use yii\web\BadRequestHttpException;
 use yii\web\Response;
 
 /**
@@ -24,38 +26,6 @@ class OrderExportService
     private const BATCH_SIZE = 5000;
 
     /**
-     * Экспортировать заказы в формат CSV
-     * 
-     * Выполняет потоковый экспорт заказов в CSV файл с учетом фильтров из запроса.
-     * Использует батчевую обработку для минимизации потребления памяти.
-     * Файл отправляется напрямую в браузер без сохранения на диске.
-     * 
-     * Особенности реализации:
-     * - Потоковая запись для работы с большими объемами данных
-     * - Автоматическое именование файла с временной меткой
-     * - Обработка ошибок с логированием
-     * 
-     * @return string Содержимое CSV файла
-     * 
-     * @throws \Exception Если произошла ошибка при генерации файла
-     */
-    public static function toCsv(): string
-    {
-        try {
-            $searchParams = Yii::$app->request->queryParams;
-            $query = (new OrderRepository())->getQueryForExport($searchParams);
-
-            self::configureResponseForCsvDownload();
-
-            return self::generateCsvContent($query);
-            
-        } catch (\Throwable $e) {
-            Yii::error('Ошибка при экспорте заказов в CSV: ' . $e->getMessage(), __METHOD__);
-            throw new \Exception('Не удалось выполнить экспорт данных. Попробуйте позже.');
-        }
-    }
-
-    /**
      * Настроить HTTP ответ для скачивания CSV файла
      * 
      * Устанавливает необходимые заголовки для корректного
@@ -72,38 +42,115 @@ class OrderExportService
             'Content-Disposition', 
             'attachment; filename="orders_export_' . date('Y-m-d_H-i-s') . '.csv"'
         );
+        $response->headers->add('Content-Encoding', 'identity');
+        $response->send();
     }
-    
+
     /**
-     * Сгенерировать содержимое CSV файла
-     * 
-     * Выполняет потоковую генерацию CSV контента с использованием
-     * output buffering для минимизации потребления памяти.
-     * 
-     * @param \yii\db\Query $query Запрос для получения данных
-     * @return string Содержимое CSV файла
+     * Экспортировать заказы в формат CSV
+     *
+     * Выполняет потоковый экспорт заказов в CSV файл с учетом фильтров из запроса.
+     * Файл отправляется напрямую в браузер без сохранения на диске.
+     *
+     * @throws BadRequestHttpException Если произошла ошибка при генерации файла
      */
-    private static function generateCsvContent(\yii\db\Query $query): string
+    public static function toCsv(): void
     {
-        ob_start();
+        try {
+            $searchParams = Yii::$app->request->queryParams;
+            $query = (new OrdersSearch())->getQueryForExport($searchParams);
+
+            self::configureResponseForCsvDownload();
+
+            self::export($query);
+
+            Yii::$app->end();
+        } catch (\Throwable $e) {
+            Yii::error('Ошибка при экспорте заказов в CSV: ' . $e->getMessage(), __METHOD__);
+            throw new BadRequestHttpException('Не удалось выполнить экспорт данных. Попробуйте позже.');
+        }
+    }
+
+    private static function export(\yii\db\Query $query): void
+    {
         $output = fopen('php://output', 'w');
-        
+
         if ($output === false) {
             throw new \Exception('Не удалось открыть поток для записи CSV');
         }
 
         try {
-            fputcsv($output, OrderHelper::getCsvHeaders());
+            fputcsv($output, OrderHelper::getCsvHeaders(), ';');
 
-            foreach ($query->each(self::BATCH_SIZE) as $row) {
-                $formattedRow = OrderHelper::formatForCsv($row);
-                fputcsv($output, $formattedRow);
+            $processedCount = 0;
+            $lastId = PHP_INT_MAX;
+
+            while (true) {
+                $batchQuery = clone $query;
+                $batchQuery->andWhere(['<', 'o.id', $lastId])
+                    ->limit(self::BATCH_SIZE);
+
+                $rows = $batchQuery->all();
+
+                if (empty($rows)) {
+                    break;
+                }
+
+                $batchSize = count($rows);
+
+                foreach ($rows as $row) {
+                    $csvRow = OrderHelper::formatForCsv($row);
+                    fputcsv($output, $csvRow, ';');
+                    $lastId = min($lastId, $row['id']);
+                }
+
+                $processedCount += $batchSize;
+                fflush($output);
+                unset($rows);
+
+                if ($processedCount % 10000 === 0) {
+                    gc_collect_cycles();
+                }
+
+                if ($batchSize < self::BATCH_SIZE) {
+                    break;
+                }
             }
-            
         } finally {
             fclose($output);
         }
-
-        return ob_get_clean();
     }
+
+    /*private static function export2(\yii\db\Query $query): void
+    {
+        $output = fopen('php://output', 'w');
+
+        if ($output === false) {
+            throw new \Exception('Не удалось открыть поток для записи CSV');
+        }
+
+        $processedCount = 0;
+        try {
+            fputcsv($output, OrderHelper::getCsvHeaders());
+
+            foreach ($query->batch(self::BATCH_SIZE) as $rows) {
+
+                $batchSize = count($rows);
+                foreach ($rows as $row) {
+                    $csvRow = OrderHelper::formatForCsv($row);
+                    fputcsv($output, $csvRow);
+                }
+
+                $processedCount += $batchSize;
+                fflush($output);
+                unset($rows);
+
+                if ($processedCount % 10000 === 0) {
+                    gc_collect_cycles();
+                }
+            }
+        } finally {
+            fclose($output);
+        }
+    }*/
 }
