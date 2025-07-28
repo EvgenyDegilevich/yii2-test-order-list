@@ -2,9 +2,10 @@
 
 namespace app\modules\orders;
 
-use yii\base\Module;
-
-class OrdersModule extends Module
+/**
+ * orders module definition class
+ */
+class Module extends \yii\base\Module
 {
     /**
      * {@inheritdoc}
@@ -17,5 +18,7 @@ class OrdersModule extends Module
     public function init()
     {
         parent::init();
+
+        // custom initialization code goes here
     }
 }

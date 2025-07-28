@@ -6,28 +6,38 @@ use Yii;
 
 /**
  * Перечисление статусов заказа
- * 
- * Определяет возможные состояния заказа в системе:
- * - PENDING: заказ ожидает обработки
- * - IN_PROGRESS: заказ в процессе выполнения
- * - COMPLETED: заказ успешно выполнен
- * - CANCELLED: заказ отменен
- * - FAILED: заказ завершился с ошибкой
- * 
+ *
+ * Определяет возможные состояния заказа в системе и предоставляет методы
+ * для работы со статусами, включая локализацию и URL представление.
+ *
  * @package app\enums
  */
 enum OrderStatus: int
 {
+    /** Заказ ожидает обработки */
     case PENDING = 0;
+
+    /** Заказ находится в процессе выполнения */
     case IN_PROGRESS = 1;
+
+    /** Заказ успешно выполнен */
     case COMPLETED = 2;
+
+    /** Заказ отменен */
     case CANCELLED = 3;
+
+    /** Заказ завершился с ошибкой */
     case FAILED = 4;
 
     /**
-     * Получить все возможные значения перечисления
-     * 
-     * @return int[]
+     * Получить все возможные числовые значения перечисления
+     *
+     * @return int[] Массив числовых значений статусов
+     *
+     * @example
+     * ```php
+     * $values = OrderStatus::values(); // [0, 1, 2, 3, 4]
+     * ```
      */
     public static function values(): array
     {
@@ -35,15 +45,20 @@ enum OrderStatus: int
     }
 
     /**
-     * Получить локализованный лейбл для отображения
-     * 
-     * @return string
+     * Получить локализованный лейбл для отображения в интерфейсе
+     *
+     * @return string Локализованное название статуса
+     *
+     * @example
+     * ```php
+     * $label = OrderStatus::PENDING->getLabel(); // "Ожидает" (если локаль ru)
+     * ```
      */
     public function getLabel(): string
     {
         return match($this) {
             self::PENDING => Yii::t('orders', 'Pending'),
-            self::IN_PROGRESS => Yii::t('orders', 'In Progress'),
+            self::IN_PROGRESS => Yii::t('orders', 'In progress'),
             self::COMPLETED => Yii::t('orders', 'Completed'),
             self::CANCELLED => Yii::t('orders', 'Cancelled'),
             self::FAILED => Yii::t('orders', 'Failed'),
@@ -51,9 +66,17 @@ enum OrderStatus: int
     }
 
     /**
-     * Получить slug для использования в URL
-     * 
-     * @return string Slug статуса в нижнем регистре для URL-адресов
+     * Получить slug для использования в URL-адресах
+     *
+     * Возвращает строковое представление статуса в нижнем регистре,
+     * которое безопасно использовать в URL-адресах.
+     *
+     * @return string URL slug статуса
+     *
+     * @example
+     * ```php
+     * $slug = OrderStatus::IN_PROGRESS->getSlug(); // "inprogress"
+     * ```
      */
     public function getSlug(): string
     {
@@ -67,12 +90,33 @@ enum OrderStatus: int
     }
 
     /**
-     * Получить статус по slug
-     * 
+     * Получить все доступные slug'и статусов
+     *
+     * @return string[] Массив всех slug'ов статусов
+     *
+     * @example
+     * ```php
+     * $slugs = OrderStatus::getSlugs(); // ['pending', 'inprogress', ...]
+     * ```
+     */
+    public static function getSlugs(): array
+    {
+        return array_map(fn($case) => $case->getSlug(), self::cases());
+    }
+
+    /**
+     * Создать экземпляр статуса из slug'а
+     *
      * Преобразует строковый slug обратно в экземпляр перечисления.
-     * 
-     * @param string $slug Slug статуса
+     * Полезно для восстановления статуса из URL параметров.
+     *
+     * @param string $slug URL-friendly представление статуса
      * @return self|null Экземпляр перечисления или null, если slug не найден
+     *
+     * @example
+     * ```php
+     * $status = OrderStatus::fromSlug('pending'); // OrderStatus::PENDING
+     * ```
      */
     public static function fromSlug(string $slug): ?self
     {

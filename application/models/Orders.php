@@ -48,14 +48,14 @@ class Orders extends ActiveRecord
             'quantity' => Yii::t('orders', 'Quantity'),
             'service_id' => Yii::t('orders', 'Service'),
             'status' => Yii::t('orders', 'Status'),
-            'created_at' => Yii::t('orders', 'Created At'),
+            'created_at' => Yii::t('orders', 'Created'),
             'mode' => Yii::t('orders', 'Mode'),
         ];
     }
 
     public function getUser(): \yii\db\ActiveQuery
     {
-        return $this->hasOne(OrderUsers::class, ['id' => 'user_id']);
+        return $this->hasOne(Users::class, ['id' => 'user_id']);
     }
 
     public function getService(): \yii\db\ActiveQuery

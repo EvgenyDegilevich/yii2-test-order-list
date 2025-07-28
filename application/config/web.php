@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../enums/OrderStatus.php';
 
 $params = require __DIR__ . '/params.php';
 $db = require __DIR__ . '/db.php';
@@ -20,12 +21,8 @@ $config = [
         'cache' => [
             'class' => 'yii\caching\FileCache',
         ],
-        'user' => [
-            'identityClass' => 'app\models\User',
-            'enableAutoLogin' => true,
-        ],
         'errorHandler' => [
-            'errorAction' => 'site/error',
+            'errorAction' => 'orders/default/error',
         ],
         'mailer' => [
             'class' => \yii\symfonymailer\Mailer::class,
@@ -47,8 +44,9 @@ $config = [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
+                '' => 'orders/default/index',
                 'orders' => 'orders/default/index',
-                'orders/<status:(pending|inprogress|completed|cancelled|failed)>' => 'orders/default/index',
+                'orders/<status:(' . implode('|', \app\enums\OrderStatus::getSlugs()) . ')>' => 'orders/default/index',
                 'orders/export' => 'orders/default/export',
             ],
         ],
@@ -64,17 +62,23 @@ $config = [
                     ],
                 ],
             ],
-        ],'assetManager' => [
+        ],
+        'assetManager' => [
             'bundles' => [
                 'yii\bootstrap5\BootstrapAsset' => false,
                 'yii\bootstrap5\BootstrapPluginAsset' => false,
+                'yii\web\JqueryAsset' => [
+                    'sourcePath' => '@app/modules/orders/assets/src',
+                    'js' => ['js/jquery.min.js'],
+                    'jsOptions' => ['position' => 1]
+                ],
             ],
         ],
     ],
     'params' => $params,
     'modules' => [
         'orders' => [
-            'class' => 'app\modules\orders\OrdersModule',
+            'class' => 'app\modules\orders\Module',
         ],
     ],
 ];

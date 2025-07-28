@@ -6,7 +6,7 @@ use Yii;
 use yii\db\ActiveRecord;
 
 /**
- * OrderUsers model (отдельная модель чтобы избежать конфликта с User для аутентификации)
+ * Users model
  * 
  * @property int $id
  * @property string $first_name
@@ -14,7 +14,7 @@ use yii\db\ActiveRecord;
  *
  * @property Order[] $orders
  */
-class OrderUsers extends ActiveRecord
+class Users extends ActiveRecord
 {
     /**
      * {@inheritdoc}

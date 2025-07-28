@@ -5,61 +5,36 @@ namespace app\helpers;
 use Yii;
 use app\enums\OrderStatus;
 use app\enums\OrderMode;
+use yii\base\InvalidConfigException;
 use yii\helpers\Url;
 
 /**
  * Вспомогательный класс для работы с заказами
- * 
- * Предоставляет методы для форматирования данных заказов,
- * создания URL для фильтров и обработки логики фильтрации.
- * 
+ *
+ * Предоставляет статические методы для форматирования данных заказов,
+ * создания URL-адресов для фильтрации, экспорта в CSV и построения
+ * навигационных элементов интерфейса.
+ *
+ * Основные возможности:
+ * - Экспорт заказов в CSV формат
+ * - Генерация URL для фильтров
+ * - Создание навигационных элементов
+ * - Форматирование данных для отображения
+ *
  * @package app\helpers
  */
 class OrderHelper
 {
     /**
-     * Форматировать данные заказа для отображения в GridView
-     * 
-     * Преобразует сырые данные заказа из базы данных в структуру,
-     * подготовленную для отображения в интерфейсе пользователя.
-     * Включает форматирование дат, получение локализованных меток
-     * и подготовку составных полей.
-     * 
-     * @param array $orderData Массив данных заказа из базы данных
-     * @return array Отформатированные данные для отображения
-     */
-    public static function formatForDisplay(array $orderData): array
-    {
-        $status = OrderStatus::tryFrom((int)$orderData['status']);
-        $mode = OrderMode::tryFrom((int)$orderData['mode']);
-        
-        return [
-            'id' => (int)$orderData['id'],
-            'user_id' => (int)$orderData['user_id'],
-            'link' => $orderData['link'],
-            'quantity' => (int)$orderData['quantity'],
-            'service_id' => (int)$orderData['service_id'],
-            'status' => (int)$orderData['status'],
-            'created_at' => (int)$orderData['created_at'],
-            'mode' => (int)$orderData['mode'],
-            'user_full_name' => trim(($orderData['first_name'] ?? '') . ' ' . ($orderData['last_name'] ?? '')),
-            'service_name' => $orderData['service_name'] ?? '',
-            'status_label' => $status?->getLabel() ?? '',
-            'mode_label' => $mode?->getLabel() ?? '',
-            'formatted_date' => $orderData['created_at'] ? Yii::$app->formatter->asDate($orderData['created_at'], 'Y-m-d') : '',
-            'formatted_time' => $orderData['created_at'] ? Yii::$app->formatter->asTime($orderData['created_at'], 'H:i:s') : '',
-        ];
-    }
-
-    /**
      * Форматировать данные заказа для экспорта в CSV
-     * 
+     *
      * Преобразует данные заказа в плоский массив значений,
      * подходящий для записи в CSV файл. Порядок значений
      * соответствует заголовкам из метода getCsvHeaders().
-     * 
+     *
      * @param array $orderData Массив данных заказа из базы данных
      * @return array Массив значений для CSV строки
+     * @throws InvalidConfigException
      */
     public static function formatForCsv(array $orderData): array
     {
@@ -101,122 +76,76 @@ class OrderHelper
     }
 
     /**
-     * Получить доступные типы поиска
-     * 
-     * Возвращает ассоциативный массив типов поиска с их
-     * локализованными названиями для использования в интерфейсе.
-     * 
-     * @return array<int, string> Массив типов поиска [ID => название]
+     * Создать URL для фильтрации заказов
+     *
+     * Генерирует URL-адрес с обновленными параметрами фильтрации,
+     * сохраняя существующие параметры и корректно обрабатывая
+     * статусные маршруты (например, /orders/pending).
+     *
+     * Логика работы:
+     * - Если filterValue = null, удаляет фильтр из параметров
+     * - Если filterValue задан, устанавливает новое значение фильтра
+     * - Сохраняет статусный маршрут, если он присутствует в URL
+     * - Объединяет с существующими параметрами поиска
+     *
+     * @param string $filterType Тип фильтра (например, 'mode', 'service_id')
+     * @param int|null $filterValue Значение фильтра или null для сброса
+     * @return string Сгенерированный URL-адрес
      */
-    public static function getSearchTypes(): array
+    public static function createFilterUrl(string $filterType, ?int $filterValue = null): string
     {
-        return [
-            1 => Yii::t('orders', 'Order ID'),
-            2 => Yii::t('orders', 'Link'),
-            3 => Yii::t('orders', 'Username'),
+        $params = Yii::$app->request->get('OrdersSearch');
+
+        if ($filterValue === null) {
+            unset($params[$filterType]);
+        } else {
+            $params[$filterType] = $filterValue;
+        }
+
+        $route = ['/orders'];
+        $status = Yii::$app->request->get('status');
+
+        if (!empty($status)) {
+            $statusEnum = OrderStatus::fromSlug($status);
+            if ($statusEnum) {
+                $route = ['/orders/' . $statusEnum->getSlug()];
+                unset($params['status']);
+            }
+        }
+
+        return Url::to(array_merge($route, ['OrdersSearch' => $params]));
+    }
+
+    /**
+     * Получить навигационные элементы для отображения
+     * 
+     * Формирует массив навигационных элементов для вкладок.
+     * 
+     * @param int|null $currentStatus Текущий статус заказа (если задан)
+     * @return array Массив навигационных элементов
+     */
+    public static function getNavItems(?int $currentStatus): array
+    {
+        $navItems[] = [
+            'label' => Yii::t('orders', 'All orders'),
+            'url' => ['/orders'],
+            'active' => !isset($currentStatus),
+            'options' => !isset($currentStatus) ? ['class' => 'active'] : [],
+            'linkOptions' => ['class' => false],
         ];
-    }
 
-    /**
-     * Создать URL для фильтра по сервису
-     * 
-     * Генерирует URL с учетом текущих параметров и нового фильтра по сервису.
-     * При изменении фильтра сбрасывается пагинация (cursor/direction).
-     * Если serviceId равен null, фильтр по сервису удаляется.
-     * 
-     * @param int|null $serviceId ID сервиса для фильтрации или null для сброса
-     * @param array $currentParams Текущие GET параметры запроса
-     * @return string Сгенерированный URL
-     */
-    public static function createServiceFilterUrl(?int $serviceId, array $currentParams): string
-    {
-        $params = $currentParams;
+        foreach (OrderStatus::cases() as $statusEnum) {
+            $statusSlug = $statusEnum->getSlug();
 
-        if ($serviceId === null) {
-            unset($params['service_id']);
-        } else {
-            $params['service_id'] = $serviceId;
-        }
-
-        unset($params['cursor'], $params['direction'], $params['page']);
-
-        $route = ['/orders'];
-        if (!empty($params['status'])) {
-            $statusEnum = OrderStatus::tryFrom($params['status']);
-            if ($statusEnum) {
-                $route = ['/orders/' . $statusEnum->getSlug()];
-                unset($params['status']);
-            }
-        }
-
-        return Url::to(array_merge($route, $params));
-    }
-
-    /**
-     * Создать URL для фильтра по режиму заказа
-     * 
-     * Генерирует URL с учетом текущих параметров и нового фильтра по режиму.
-     * При изменении фильтра сбрасывается пагинация (cursor/direction).
-     * Если mode равен null, фильтр по режиму удаляется.
-     * 
-     * @param int|null $mode Режим заказа для фильтрации или null для сброса
-     * @param array $currentParams Текущие GET параметры запроса
-     * @return string Сгенерированный URL
-     */
-    public static function createModeFilterUrl(?int $mode, array $currentParams): string
-    {
-        $params = $currentParams;
-
-        if ($mode === null) {
-            unset($params['mode']);
-        } else {
-            $params['mode'] = $mode;
-        }
-
-        unset($params['cursor'], $params['direction'], $params['page']);
-
-        $route = ['/orders'];
-        if (!empty($params['status'])) {
-            $statusEnum = OrderStatus::tryFrom($params['status']);
-            if ($statusEnum) {
-                $route = ['/orders/' . $statusEnum->getSlug()];
-                unset($params['status']);
-            }
-        }
-
-        return Url::to(array_merge($route, $params));
-    }
-
-    /**
-     * Обработать логику фильтров и очистить зависимые параметры
-     * 
-     * Выполняет следующую логику:
-     * - При активном поиске очищает все фильтры кроме статуса
-     * - При изменении статуса очищает зависимые фильтры (mode, service_id)
-     * - Сохраняет текущий статус в сессии для отслеживания изменений
-     * 
-     * @param array $searchParams Параметры поиска и фильтрации (передается по ссылке)
-     * @return void
-     */
-    public static function handleFilter(array &$searchParams): void
-    {
-        // Если есть поиск, очищаем все фильтры кроме статуса
-        if (!empty($searchParams['search'])) {
-            $searchParams = [
-                'search' => $searchParams['search'],
-                'status' => $searchParams['status'] ?? null,
-                'search_type' => $searchParams['search_type'] ?? 1,
+            $navItems[] = [
+                'label' => $statusEnum->getLabel(),
+                'url' => ['/orders/' . $statusSlug],
+                'active' => $currentStatus === $statusEnum->value,
+                'options' => $currentStatus === $statusEnum->value ? ['class' => 'active'] : [],
+                'linkOptions' => ['class' => false],
             ];
         }
 
-        // Если изменился статус, очищаем зависимые фильтры
-        $currentStatus = $searchParams['status'] ?? null;
-        $previousStatus = Yii::$app->session->get('orders.previous_status');
-
-        if ($currentStatus !== $previousStatus) {
-            unset($searchParams['mode']);
-            unset($searchParams['service_id']);
-            Yii::$app->session->set('orders.previous_status', $currentStatus);
-        }
+        return $navItems;
     }
 }
