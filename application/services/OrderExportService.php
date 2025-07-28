@@ -4,18 +4,23 @@ namespace app\services;
 
 use app\modules\orders\models\OrdersSearch;
 use Yii;
-use app\repositories\OrderRepository;
 use app\helpers\OrderHelper;
+use yii\db\Query;
 use yii\web\BadRequestHttpException;
 use yii\web\Response;
 
 /**
  * Сервис для экспорта заказов
- * 
- * Предоставляет функциональность экспорта данных заказов в различные форматы.
- * Использует потоковую обработку для эффективной работы с большими объемами данных,
- * минимизируя потребление памяти за счет батчевой обработки.
- * 
+ *
+ * Предоставляет функциональность экспорта данных заказов в различные форматы
+ * с поддержкой потоковой обработки больших объемов данных.
+ *
+ * Особенности реализации:
+ * - Потоковая обработка для минимизации использования памяти
+ * - Батчевая обработка записей для оптимизации производительности
+ * - Автоматическая сборка мусора при обработке больших объемов
+ * - Устойчивость к прерываниям и таймаутам
+ *
  * @package app\services
  */
 class OrderExportService
@@ -24,6 +29,16 @@ class OrderExportService
      * Размер батча для обработки данных
      */
     private const BATCH_SIZE = 5000;
+
+    /**
+     * Интервал для принудительной сборки мусора (количество записей)
+     */
+    private const GC_INTERVAL = 10000;
+
+    /**
+     * Разделитель CSV полей
+     */
+    private const CSV_DELIMITER = ';';
 
     /**
      * Настроить HTTP ответ для скачивания CSV файла
@@ -49,8 +64,8 @@ class OrderExportService
     /**
      * Экспортировать заказы в формат CSV
      *
-     * Выполняет потоковый экспорт заказов в CSV файл с учетом фильтров из запроса.
-     * Файл отправляется напрямую в браузер без сохранения на диске.
+     * Основной метод для экспорта заказов. Выполняет потоковый экспорт
+     * отфильтрованных заказов в CSV файл с отправкой напрямую в браузер.
      *
      * @throws BadRequestHttpException Если произошла ошибка при генерации файла
      */
@@ -71,7 +86,17 @@ class OrderExportService
         }
     }
 
-    private static function export(\yii\db\Query $query): void
+    /**
+     * Выполнить потоковый экспорт данных в CSV формат
+     *
+     * Основная логика экспорта с батчевой обработкой данных.
+     * Использует курсорную пагинацию для эффективной работы с большими наборами данных.
+     *
+     * @param Query $query Подготовленный запрос для экспорта
+     * @return void
+     * @throws \Exception Если не удалось открыть поток вывода
+     */
+    private static function export(Query $query): void
     {
         $output = fopen('php://output', 'w');
 
@@ -80,7 +105,7 @@ class OrderExportService
         }
 
         try {
-            fputcsv($output, OrderHelper::getCsvHeaders(), ';');
+            fputcsv($output, OrderHelper::getCsvHeaders(), self::CSV_DELIMITER);
 
             $processedCount = 0;
             $lastId = PHP_INT_MAX;
@@ -100,7 +125,7 @@ class OrderExportService
 
                 foreach ($rows as $row) {
                     $csvRow = OrderHelper::formatForCsv($row);
-                    fputcsv($output, $csvRow, ';');
+                    fputcsv($output, $csvRow, self::CSV_DELIMITER);
                     $lastId = min($lastId, $row['id']);
                 }
 
@@ -108,7 +133,7 @@ class OrderExportService
                 fflush($output);
                 unset($rows);
 
-                if ($processedCount % 10000 === 0) {
+                if ($processedCount % self::GC_INTERVAL === 0) {
                     gc_collect_cycles();
                 }
 
