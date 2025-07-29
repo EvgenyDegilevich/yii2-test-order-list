@@ -22,14 +22,14 @@ use yii\helpers\Html;
     <li class="pull-right custom-search">
         <?= Html::beginForm($formAction ?? ['/orders'], 'get', ['class' => 'form-inline']) ?>
             <div class="input-group">
-                <?= Html::textInput('search', $searchParams['search'] ?? '', [
+                <?= Html::textInput('search', $model->search ?? '', [
                     'class' => 'form-control',
                     'placeholder' => Yii::t('orders', 'search.placeholder'),
                 ]) ?>
                 <span class="input-group-btn search-select-wrap">
                     <?= Html::dropDownList(
                         'search_type',
-                        (int)($searchParams['search_type'] ?? 1),
+                        (int)($model->search_type ?? 1),
                         OrderSearchType::getSearchTypes(),
                         ['class' => 'form-control search-select']
                     ) ?>

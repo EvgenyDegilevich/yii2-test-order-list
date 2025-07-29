@@ -10,14 +10,29 @@ use app\enums\OrderSearchType;
 /**
  * Валидатор для поисковых запросов заказов
  *
+ * Выполняет специализированную валидацию поисковых запросов в зависимости
+ * от выбранного типа поиска. Поддерживает валидацию поиска по ID заказа,
+ * ссылке и имени пользователя с соответствующими правилами для каждого типа.
+ *
  * @package app\modules\orders\validators
  */
 class SearchValidator extends Validator
 {
+    /**
+     * Имя атрибута, содержащего тип поиска
+     * @var string
+     */
     public string $searchTypeAttribute = 'search_type';
 
     /**
-     * {@inheritdoc}
+     * Валидировать поисковый атрибут
+     *
+     * Основной метод валидации, который определяет тип поиска и вызывает
+     * соответствующий специализированный метод валидации.
+     *
+     * @param Model $model Модель для валидации
+     * @param string $attribute Имя валидируемого атрибута
+     * @return void
      */
     public function validateAttribute($model, $attribute): void
     {
@@ -43,9 +58,12 @@ class SearchValidator extends Validator
     /**
      * Валидация поиска по ID заказа
      *
-     * @param Model $model
-     * @param string $attribute
-     * @param string $value
+     * Проверяет, что значение является числовым и положительным.
+     *
+     * @param Model $model Модель для валидации
+     * @param string $attribute Имя атрибута
+     * @param mixed $value Значение для валидации
+     * @return void
      */
     private function validateOrderId(Model $model, string $attribute, mixed $value): void
     {
@@ -62,9 +80,12 @@ class SearchValidator extends Validator
     /**
      * Валидация поиска по ссылке
      *
-     * @param mixed $model
-     * @param string $attribute
-     * @param string $value
+     * Проверяет, что значение является корректным URL-адресом.
+     *
+     * @param Model $model Модель для валидации
+     * @param string $attribute Имя атрибута
+     * @param mixed $value Значение для валидации
+     * @return void
      */
     private function validateLink(Model $model, string $attribute, string $value): void
     {
@@ -76,9 +97,12 @@ class SearchValidator extends Validator
     /**
      * Валидация поиска по имени пользователя
      *
-     * @param mixed $model
-     * @param string $attribute
-     * @param string $value
+     * Проверяет длину введенного значения (от 2 до 50 символов).
+     *
+     * @param Model $model Модель для валидации
+     * @param string $attribute Имя атрибута
+     * @param mixed $value Значение для валидации
+     * @return void
      */
     private function validateUsername(Model $model, string $attribute, string $value): void
     {

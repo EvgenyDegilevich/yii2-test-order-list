@@ -4,13 +4,11 @@ namespace app\modules\orders\models;
 
 use app\helpers\OrderHelper;
 use app\models\Services;
-use app\models\Users;
 use app\modules\orders\validators\SearchValidator;
+use yii\base\InvalidConfigException;
 use yii\base\Model;
-use app\models\Orders;
 use app\enums\OrderStatus;
 use yii\data\Pagination;
-use yii\db\ActiveQuery;
 use yii\db\Query;
 use yii\web\NotFoundHttpException;
 use app\enums\OrderSearchType;
@@ -43,9 +41,22 @@ class OrdersSearch extends Model
      */
     public $search_type;
 
-    public $id;
+    /**
+     * Статус заказа для фильтрации
+     * @var int|null
+     */
     public $status;
+
+    /**
+     * Идентификатор сервиса для фильтрации
+     * @var int|null
+     */
     public $service_id;
+
+    /**
+     * Режим заказа для фильтрации
+     * @var int|null
+     */
     public $mode;
 
     /**
@@ -54,7 +65,7 @@ class OrdersSearch extends Model
     public function rules(): array
     {
         return [
-            [['id', 'service_id', 'status', 'mode'], 'integer'],
+            [['service_id', 'status', 'mode'], 'integer'],
             
             [['search'], 'string', 'max' => 255],
             [['search'], 'trim'],
@@ -80,6 +91,15 @@ class OrdersSearch extends Model
         return $loaded;
     }
 
+    /**
+     * Получить базовый SQL запрос для поиска заказов
+     *
+     * Создает основной запрос с необходимыми JOIN'ами для получения
+     * данных заказов вместе с информацией о пользователях и сервисах.
+     * Результат сортируется по убыванию ID заказа.
+     *
+     * @return Query Базовый запрос для дальнейшей модификации
+     */
     private function getBaseQuery(): Query
     {
         return (new Query())
@@ -102,6 +122,15 @@ class OrdersSearch extends Model
             ->orderBy(['o.id' => SORT_DESC]);
     }
 
+    /**
+     * Применить базовые фильтры к запросу
+     *
+     * Добавляет к запросу условия фильтрации по основным полям заказа:
+     * сервису, статусу и режиму обработки.
+     *
+     * @param Query $query Запрос для модификации
+     * @return void
+     */
     private function applyBaseFilters(Query $query): void
     {
         $query->andFilterWhere([
@@ -118,10 +147,9 @@ class OrdersSearch extends Model
      * Обрабатывает различные типы поиска: по ID, ссылке и имени пользователя.
      *
      * @param Query $query Запрос для модификации
-     * @param bool $isExport Флаг экспорта (влияет на JOIN'ы)
      * @return void
      */
-    private function applySearchFilters(Query $query, bool $isExport = false): void
+    private function applySearchFilters(Query $query): void
     {
         if (empty($this->search) || $this->hasErrors()) {
             return;
@@ -145,6 +173,15 @@ class OrdersSearch extends Model
         }
     }
 
+    /**
+     * Выполнить поиск заказов с пагинацией
+     *
+     * Строит и выполняет запрос с примененными фильтрами, добавляет
+     * пагинацию и возвращает форматированные данные для отображения.
+     *
+     * @return array Массив с данными и объектом пагинации
+     * @throws InvalidConfigException
+     */
     public function search(): array
     {
         $query = $this->getBaseQuery();
@@ -171,8 +208,7 @@ class OrdersSearch extends Model
      * для каждого сервиса с учетом текущих фильтров. Сервисы сортируются
      * по убыванию количества заказов.
      *
-     * @return array{totalCount: int, services: array<int, array{name: string, count: int}>}
-     *         Массив с общим количеством и данными по сервисам
+     * @return array Массив с общим количеством и данными по сервисам
      */
     public function getServiceFilterData(): array
     {
