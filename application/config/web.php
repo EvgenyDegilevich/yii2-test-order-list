@@ -15,7 +15,6 @@ $config = [
     ],
     'components' => [
         'request' => [
-            // !!! insert a secret key in the following (if it is empty) - this is required by cookie validation
             'cookieValidationKey' => $_ENV['YII_COOKIE_VALIDATION_KEY'] ?? 'your-secret-key-here',
         ],
         'cache' => [
@@ -27,7 +26,6 @@ $config = [
         'mailer' => [
             'class' => \yii\symfonymailer\Mailer::class,
             'viewPath' => '@app/mail',
-            // send all mails to a file by default.
             'useFileTransport' => true,
         ],
         'log' => [
@@ -67,11 +65,6 @@ $config = [
             'bundles' => [
                 'yii\bootstrap5\BootstrapAsset' => false,
                 'yii\bootstrap5\BootstrapPluginAsset' => false,
-                'yii\web\JqueryAsset' => [
-                    'sourcePath' => '@app/modules/orders/assets/src',
-                    'js' => ['js/jquery.min.js'],
-                    'jsOptions' => ['position' => 1]
-                ],
             ],
         ],
     ],

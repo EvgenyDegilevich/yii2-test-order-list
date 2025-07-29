@@ -2,7 +2,7 @@
 
 return [
     // Заголовки и общие элементы
-    'navbar.title' => 'Заказы',
+    'title' => 'Заказы',
     'table.header.column.id' => 'ID',
     'table.header.column.user' => 'Пользователь',
     'table.header.column.link' => 'Ссылка',
@@ -14,8 +14,10 @@ return [
     'search.button' => 'Поиск',
     'search.placeholder' => 'Поиск заказов',
     'search.type.order_id' => 'ID заказа',
+    'search.type.link' => 'Ссылка',
     'search.type.username' => 'Имя пользователя',
     'navbar.toggle' => 'Переключить навигацию',
+    'export.button' => 'Сохранить результат',
 
     // Статусы заказов
     'status.pending' => 'В ожидании',

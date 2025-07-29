@@ -2,13 +2,14 @@
 
 namespace app\modules\orders\models;
 
+use app\helpers\OrderHelper;
 use app\models\Services;
 use app\models\Users;
 use app\modules\orders\validators\SearchValidator;
 use yii\base\Model;
-use yii\data\ActiveDataProvider;
 use app\models\Orders;
 use app\enums\OrderStatus;
+use yii\data\Pagination;
 use yii\db\ActiveQuery;
 use yii\db\Query;
 use yii\web\NotFoundHttpException;
@@ -28,9 +29,7 @@ use app\enums\OrderSearchType;
  */
 class OrdersSearch extends Model
 {
-
-    /** Сценарий для поиска с дополнительной валидацией */
-    const SCENARIO_SEARCH = 'search';
+    const PAGE_SIZE = 100;
 
     /**
      * Поисковый запрос пользователя
@@ -59,7 +58,9 @@ class OrdersSearch extends Model
             
             [['search'], 'string', 'max' => 255],
             [['search'], 'trim'],
-            [['search'], 'required'],
+            [['search'], 'required', 'when' => function($model) {
+                return !empty($model->search_type);
+            }],
             [['search_type'], 'integer'],
 
             [['search'], SearchValidator::class],
@@ -67,68 +68,100 @@ class OrdersSearch extends Model
     }
 
     /**
-     * Создать провайдер данных с примененными фильтрами поиска
-     *
-     * Основной метод для получения отфильтрованных данных заказов.
-     * Применяет все доступные фильтры и создает пагинированный результат.
-     *
-     * @param array $params Параметры запроса из контроллера
-     * @param string|null $formName Имя формы для загрузки данных
-     * @return ActiveDataProvider Провайдер данных с примененными фильтрами
+     * @inheritdoc
      * @throws NotFoundHttpException
      */
-    public function search(array $params, ?string $formName = null): ActiveDataProvider
+    public function load($data, $formName = null): bool
     {
-        $query = Orders::find()
-            ->with(['user', 'service'])
-            ->orderBy(['id' => SORT_DESC]);
+        $loaded = parent::load($data, $formName);
 
-        $dataProvider = new ActiveDataProvider([
-            'query' => $query,
-            'pagination' => [
-                'pageSize' => 100,
-            ]
-        ]);
+        $this->setStatus($data);
 
-        $this->checkSearchScenarioActivation($params);
-        $this->load($params, $formName);
-        $this->setStatus($params);
+        return $loaded;
+    }
 
-        if (!$this->validate()) {
-            return $dataProvider;
-        }
+    private function getBaseQuery(): Query
+    {
+        return (new Query())
+            ->select([
+                'o.id',
+                'o.user_id',
+                'o.link',
+                'o.quantity',
+                'o.service_id',
+                'o.status',
+                'o.created_at',
+                'o.mode',
+                'u.first_name',
+                'u.last_name',
+                's.name as service_name'
+            ])
+            ->from(['o' => 'orders'])
+            ->leftJoin(['u' => 'users'], 'o.user_id = u.id')
+            ->leftJoin(['s' => 'services'], 'o.service_id = s.id')
+            ->orderBy(['o.id' => SORT_DESC]);
+    }
 
+    private function applyBaseFilters(Query $query): void
+    {
         $query->andFilterWhere([
-            'service_id' => $this->service_id,
-            'status' => $this->status,
-            'mode' => $this->mode,
+            'o.service_id' => $this->service_id,
+            'o.status' => $this->status,
+            'o.mode' => $this->mode,
         ]);
-
-        $this->applySearchFilters($query);
-
-        return $dataProvider;
     }
 
     /**
-     * Проверить и активировать сценарий поиска при необходимости
+     * Применить поисковые фильтры к запросу
      *
-     * Автоматически переключает модель в сценарий поиска, если в параметрах
-     * присутствуют поисковые поля.
+     * Добавляет к запросу условия поиска в зависимости от выбранного типа поиска.
+     * Обрабатывает различные типы поиска: по ID, ссылке и имени пользователя.
      *
-     * @param array $params Параметры запроса
+     * @param Query $query Запрос для модификации
+     * @param bool $isExport Флаг экспорта (влияет на JOIN'ы)
      * @return void
      */
-    public function checkSearchScenarioActivation(array $params): void
+    private function applySearchFilters(Query $query, bool $isExport = false): void
     {
-        if (
-            !empty($params['OrdersSearch']) &&
-            (
-                array_key_exists('search', $params['OrdersSearch']) ||
-                array_key_exists('search_type', $params['OrdersSearch'])
-            )
-        ) {
-            $this->scenario = self::SCENARIO_SEARCH;
+        if (empty($this->search) || $this->hasErrors()) {
+            return;
         }
+
+        switch ($this->search_type) {
+            case OrderSearchType::ORDER_ID->value:
+                $query->andWhere(['o.id' => (int)$this->search]);
+                break;
+            case OrderSearchType::LINK->value:
+                $query->andWhere(['like', 'o.link', $this->search]);
+                break;
+            case OrderSearchType::USERNAME->value:
+                $query->andWhere([
+                    'OR',
+                    ['like', 'CONCAT(u.first_name, " ", u.last_name)', $this->search],
+                    ['like', 'u.first_name', $this->search],
+                    ['like', 'u.last_name', $this->search],
+                ]);
+                break;
+        }
+    }
+
+    public function search(): array
+    {
+        $query = $this->getBaseQuery();
+        $this->applyBaseFilters($query);
+        $this->applySearchFilters($query);
+
+        $pagination = new Pagination([
+            'totalCount' => $query->count('o.id'),
+            'pageSize' => self::PAGE_SIZE,
+            'pageSizeParam' => false
+        ]);
+
+        $data = $query->offset($pagination->offset)
+            ->limit($pagination->limit)
+            ->all();
+
+        return [OrderHelper::formatResultsForDisplay($data), $pagination];
     }
 
     /**
@@ -143,12 +176,11 @@ class OrdersSearch extends Model
      */
     public function getServiceFilterData(): array
     {
-        $totalCountQuery = Orders::find()
-            ->select('id')
-            ->andFilterWhere([
-                'status' => $this->status,
-                'mode' => $this->mode,
-            ]);
+        $totalCountQuery = $this->getBaseQuery();
+        $totalCountQuery->andFilterWhere([
+            'o.status' => $this->status,
+            'o.mode' => $this->mode,
+        ]);
         $this->applySearchFilters($totalCountQuery);
         $totalCount = $totalCountQuery->count();
 
@@ -157,15 +189,13 @@ class OrdersSearch extends Model
             ->indexBy('id')
             ->column();
 
-        $serviceCountQuery = Orders::find()
+        $serviceCountQuery = $this->getBaseQuery();
+        $serviceCountQuery
             ->select(['COUNT(*) as count'])
-            ->andFilterWhere([
-                'service_id' => $this->service_id,
-                'status' => $this->status,
-                'mode' => $this->mode,
-            ])
-            ->groupBy('service_id')
-            ->indexBy('service_id');
+            ->groupBy('o.service_id')
+            ->indexBy('o.service_id')
+            ->orderBy(['count' => SORT_DESC]);
+        $this->applyBaseFilters($serviceCountQuery);
         $this->applySearchFilters($serviceCountQuery);
         $serviceCount = $serviceCountQuery->column();
 
@@ -181,7 +211,7 @@ class OrdersSearch extends Model
 
         return [
             'totalCount' => $totalCount,
-            'services' => $result,
+            'items' => $result,
         ];
     }
 
@@ -195,7 +225,7 @@ class OrdersSearch extends Model
      * @return void
      * @throws NotFoundHttpException Если статус не найден
      */
-    protected function setStatus(array $params): void
+    public function setStatus(array $params): void
     {
         if (!empty($params['status'])) {
             $statusEnum = OrderStatus::fromSlug($params['status']);
@@ -207,83 +237,19 @@ class OrdersSearch extends Model
     }
 
     /**
-     * Применить поисковые фильтры к запросу
-     *
-     * Добавляет к запросу условия поиска в зависимости от выбранного типа поиска.
-     * Обрабатывает различные типы поиска: по ID, ссылке и имени пользователя.
-     *
-     * @param Query $query Запрос для модификации
-     * @param bool $isExport Флаг экспорта (влияет на JOIN'ы)
-     * @return void
-     */
-    private function applySearchFilters(Query $query, bool $isExport = false): void
-    {
-        if (empty($this->search)) {
-            return;
-        }
-
-        switch ($this->search_type) {
-            case OrderSearchType::ORDER_ID->value:
-                $query->andWhere('id = :id', [':id' => (int)$this->search]);
-                break;
-            case OrderSearchType::LINK->value:
-                $query->andWhere('link LIKE :link', [':link' => '%' . $this->search . '%']);
-                break;
-            case OrderSearchType::USERNAME->value:
-                if (!$isExport) {
-                    $query->leftJoin(['u' => Users::tableName()], 'u.id = orders.user_id');
-                }
-                $query->andWhere([
-                        'OR',
-                        'CONCAT(u.first_name, " ", u.last_name) LIKE :username',
-                        'u.first_name LIKE :username',
-                        'u.last_name LIKE :username',
-                    ], [':username' => '%' . $this->search . '%']);
-                break;
-        }
-    }
-
-    /**
      * Получить запрос для экспорта данных
      *
      * Создает оптимизированный запрос для экспорта большого количества данных
      * в CSV формат. Использует прямой SQL запрос вместо ActiveRecord для
      * лучшей производительности.
      *
-     * @param array $params Параметры фильтрации
      * @return Query Подготовленный запрос для экспорта
-     * @throws NotFoundHttpException
      */
-    public function getQueryForExport(array $params): Query
+    public function getQueryForExport(): Query
     {
-        $this->checkSearchScenarioActivation($params);
-        $this->load($params);
-        $this->setStatus($params);
-        $query = (new Query())
-            ->select([
-                'o.id',
-                'o.user_id',
-                'o.link',
-                'o.quantity',
-                'o.service_id',
-                'o.status',
-                'o.created_at',
-                'o.mode',
-                'u.first_name',
-                'u.last_name',
-                's.name as service_name'
-            ])
-            ->from(['o' => 'orders'])
-            ->leftJoin(['u' => 'users'], 'u.id = o.user_id')
-            ->leftJoin(['s' => 'services'], 's.id = o.service_id')
-            ->andFilterWhere([
-                'service_id' => $this->service_id,
-                'status' => $this->status,
-                'mode' => $this->mode,
-            ])
-            ->orderBy(['o.id' => SORT_DESC]);
-
-        $this->applySearchFilters($query, true);
+        $query = $this->getBaseQuery();
+        $this->applyBaseFilters($query);
+        $this->applySearchFilters($query);
 
         return $query;
     }

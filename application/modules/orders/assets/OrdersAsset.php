@@ -14,7 +14,7 @@ class OrdersAsset extends AssetBundle
     ];
     
     public $js = [
-        //'js/jquery.min.js',
+        'js/jquery.min.js',
         'js/bootstrap.min.js',
     ];
 

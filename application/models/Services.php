@@ -3,6 +3,7 @@
 namespace app\models;
 
 use Yii;
+use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 
 /**
@@ -11,7 +12,7 @@ use yii\db\ActiveRecord;
  * @property int $id
  * @property string $name
  *
- * @property Order[] $orders
+ * @property Orders[] $orders
  */
 class Services extends ActiveRecord
 {
@@ -37,20 +38,9 @@ class Services extends ActiveRecord
     }
 
     /**
-     * {@inheritdoc}
+     * @return ActiveQuery
      */
-    public function attributeLabels(): array
-    {
-        return [
-            'id' => Yii::t('orders', 'ID'),
-            'name' => Yii::t('orders', 'Service Name'),
-        ];
-    }
-
-    /**
-     * @return \yii\db\ActiveQuery
-     */
-    public function getOrders(): \yii\db\ActiveQuery
+    public function getOrders(): ActiveQuery
     {
         return $this->hasMany(Orders::class, ['service_id' => 'id']);
     }

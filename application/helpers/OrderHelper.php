@@ -64,14 +64,14 @@ class OrderHelper
     public static function getCsvHeaders(): array
     {
         return [
-            Yii::t('orders', 'ID'),
-            Yii::t('orders', 'User'),
-            Yii::t('orders', 'Link'),  
-            Yii::t('orders', 'Quantity'),
-            Yii::t('orders', 'Service'),
-            Yii::t('orders', 'Status'),
-            Yii::t('orders', 'Mode'),
-            Yii::t('orders', 'Created At'),
+            Yii::t('orders', 'table.header.column.id'),
+            Yii::t('orders', 'table.header.column.user'),
+            Yii::t('orders', 'table.header.column.link'),
+            Yii::t('orders', 'table.header.column.quantity'),
+            Yii::t('orders', 'table.header.column.service'),
+            Yii::t('orders', 'table.header.column.status'),
+            Yii::t('orders', 'table.header.column.mode'),
+            Yii::t('orders', 'table.header.column.created'),
         ];
     }
 
@@ -94,7 +94,7 @@ class OrderHelper
      */
     public static function createFilterUrl(string $filterType, ?int $filterValue = null): string
     {
-        $params = Yii::$app->request->get('OrdersSearch');
+        $params = Yii::$app->request->get();
 
         if ($filterValue === null) {
             unset($params[$filterType]);
@@ -113,7 +113,7 @@ class OrderHelper
             }
         }
 
-        return Url::to(array_merge($route, ['OrdersSearch' => $params]));
+        return Url::to(array_merge($route, $params));
     }
 
     /**
@@ -127,11 +127,9 @@ class OrderHelper
     public static function getNavItems(?int $currentStatus): array
     {
         $navItems[] = [
-            'label' => Yii::t('orders', 'All orders'),
+            'label' => Yii::t('orders', 'filter.all_orders'),
             'url' => ['/orders'],
-            'active' => !isset($currentStatus),
-            'options' => !isset($currentStatus) ? ['class' => 'active'] : [],
-            'linkOptions' => ['class' => false],
+            'active' => !isset($currentStatus)
         ];
 
         foreach (OrderStatus::cases() as $statusEnum) {
@@ -140,12 +138,62 @@ class OrderHelper
             $navItems[] = [
                 'label' => $statusEnum->getLabel(),
                 'url' => ['/orders/' . $statusSlug],
-                'active' => $currentStatus === $statusEnum->value,
-                'options' => $currentStatus === $statusEnum->value ? ['class' => 'active'] : [],
-                'linkOptions' => ['class' => false],
+                'active' => $currentStatus === $statusEnum->value
             ];
         }
 
         return $navItems;
+    }
+
+    /**
+     * Форматировать данные заказа для отображения в интерфейсе
+     *
+     * Преобразует сырые данные заказа из базы данных в структурированный
+     * массив с форматированными значениями, готовыми для отображения
+     * пользователю. Включает локализованные статусы, режимы и форматированные даты.
+     *
+     * @param array $orderData Массив данных заказа из базы данных
+     * @return array Ассоциативный массив с форматированными данными для отображения
+     * @throws InvalidConfigException
+     */
+    public static function formatForDisplay(array $orderData): array
+    {
+        $status = OrderStatus::tryFrom((int)$orderData['status']);
+        $mode = OrderMode::tryFrom((int)$orderData['mode']);
+
+        return [
+            'id' => (int)$orderData['id'],
+            'link' => $orderData['link'],
+            'quantity' => (int)$orderData['quantity'],
+            'service_id' => (int)$orderData['service_id'],
+            'user_full_name' => trim(($orderData['first_name'] ?? '') . ' ' . ($orderData['last_name'] ?? '')),
+            'service_name' => $orderData['service_name'] ?? '',
+            'status_label' => $status?->getLabel() ?? '',
+            'mode_label' => $mode?->getLabel() ?? '',
+            'formatted_date' => $orderData['created_at'] ? Yii::$app->formatter->asDate($orderData['created_at'], 'Y-m-d') : '',
+            'formatted_time' => $orderData['created_at'] ? Yii::$app->formatter->asTime($orderData['created_at'], 'H:i:s') : '',
+        ];
+    }
+
+    /**
+     * Форматировать массив заказов для отображения в интерфейсе
+     *
+     * Применяет форматирование к массиву заказов, преобразуя каждый элемент
+     * с помощью метода formatForDisplay(). Удобно для массовой обработки
+     * результатов поиска или списков заказов.
+     *
+     * @param array $data Массив данных заказов из базы данных
+     * @return array Массив форматированных данных заказов
+     * @throws InvalidConfigException
+     */
+    public static function formatResultsForDisplay(array $data): array
+    {
+        $formattedResults = [];
+
+        foreach ($data as $item) {
+            $formattedResults[] = OrderHelper::formatForDisplay($item);
+        }
+
+        return $formattedResults;
     }
 }

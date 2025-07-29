@@ -39,7 +39,7 @@ OrdersAsset::register($this);
     <div class="container-fluid">
         <div class="navbar-header">
             <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-navbar-collapse">
-                <span class="sr-only">Toggle navigation</span>
+                <span class="sr-only"><?= Yii::t('orders', 'navbar.toggle') ?></span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
@@ -48,7 +48,7 @@ OrdersAsset::register($this);
         <div class="collapse navbar-collapse" id="bs-navbar-collapse">
             <ul class="nav navbar-nav">
                 <li class="active">
-                    <?= Html::a(Yii::t('orders', 'Orders'), ['/orders']) ?>
+                    <?= Html::a(Yii::t('orders', 'title'), ['/orders']) ?>
                 </li>
             </ul>
         </div>

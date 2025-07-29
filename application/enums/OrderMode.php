@@ -27,11 +27,6 @@ enum OrderMode: int
      * экземпляры данного перечисления.
      *
      * @return int[] Массив числовых значений
-     *
-     * @example
-     * ```php
-     * $values = OrderMode::values(); // [0, 1]
-     * ```
      */
     public static function values(): array
     {
@@ -45,17 +40,30 @@ enum OrderMode: int
      * которое можно использовать для отображения пользователю.
      *
      * @return string Локализованное название режима
-     *
-     * @example
-     * ```php
-     * $label = OrderMode::MANUAL->getLabel(); // "Ручной" (если локаль ru)
-     * ```
      */
     public function getLabel(): string
     {
         return match($this) {
-            self::MANUAL => Yii::t('orders', 'Manual'),
-            self::AUTO => Yii::t('orders', 'Auto'),
+            self::MANUAL => Yii::t('orders', 'mode.manual'),
+            self::AUTO => Yii::t('orders', 'mode.auto'),
         };
+    }
+
+    /**
+     * Получить все доступные режимы заказа с локализованными названиями
+     *
+     * Возвращает ассоциативный массив всех режимов заказа, где ключи - это
+     * числовые значения режимов, а значения - их локализованные названия.
+     * Удобно использовать для создания выпадающих списков в формах.
+     *
+     * @return array<int, string> Ассоциативный массив [ID => название]
+     */
+    public static function getOrderModes(): array
+    {
+        $modes = [];
+        foreach (self::cases() as $case) {
+            $modes[$case->value] = $case->getLabel();
+        }
+        return $modes;
     }
 }

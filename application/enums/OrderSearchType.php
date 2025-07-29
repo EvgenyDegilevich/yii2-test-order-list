@@ -30,18 +30,13 @@ enum OrderSearchType: int
      * которое отображается пользователю в интерфейсе.
      *
      * @return string Локализованное название типа поиска
-     *
-     * @example
-     * ```php
-     * $label = OrderSearchType::ORDER_ID->getLabel(); // "ID заказа" (если локаль ru)
-     * ```
      */
     public function getLabel(): string
     {
         return match($this) {
-            self::ORDER_ID => Yii::t('orders', 'Order ID'),
-            self::LINK => Yii::t('orders', 'Link'),
-            self::USERNAME => Yii::t('orders', 'Username'),
+            self::ORDER_ID => Yii::t('orders', 'search.type.order_id'),
+            self::LINK => Yii::t('orders', 'search.type.link'),
+            self::USERNAME => Yii::t('orders', 'search.type.username'),
         };
     }
 
@@ -53,12 +48,6 @@ enum OrderSearchType: int
      * Удобно использовать для создания выпадающих списков в формах.
      *
      * @return array<int, string> Ассоциативный массив [ID => название]
-     *
-     * @example
-     * ```php
-     * $types = OrderSearchType::getSearchTypes();
-     * // [1 => 'Order ID', 2 => 'Link', 3 => 'Username']
-     * ```
      */
     public static function getSearchTypes(): array
     {
@@ -73,11 +62,6 @@ enum OrderSearchType: int
      * Получить все возможные числовые значения перечисления
      *
      * @return int[] Массив числовых значений типов поиска
-     *
-     * @example
-     * ```php
-     * $values = OrderSearchType::values(); // [1, 2, 3]
-     * ```
      */
     public static function values(): array
     {

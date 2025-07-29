@@ -29,10 +29,10 @@ class SearchValidator extends Validator
         }
 
         if (!OrderSearchType::tryFrom($searchType)) {
-            $this->addError($model, $this->searchTypeAttribute, Yii::t('app', 'validator.search_type.invalid'));
+            $this->addError($model, $this->searchTypeAttribute, Yii::t('orders', 'validator.search_type.invalid'));
         }
 
-        match ($searchType) {
+        match ((int)$searchType) {
             OrderSearchType::ORDER_ID->value => $this->validateOrderId($model, $attribute, $searchValue),
             OrderSearchType::LINK->value => $this->validateLink($model, $attribute, $searchValue),
             OrderSearchType::USERNAME->value => $this->validateUsername($model, $attribute, $searchValue),
@@ -50,12 +50,12 @@ class SearchValidator extends Validator
     private function validateOrderId(Model $model, string $attribute, mixed $value): void
     {
         if (!is_numeric($value)) {
-            $this->addError($model, $attribute, Yii::t('app', 'validator.order_id.not_numeric'));
+            $this->addError($model, $attribute, Yii::t('orders', 'validator.order_id.not_numeric'));
             return;
         }
 
         if ((int)$value < 1) {
-            $this->addError($model, $attribute, Yii::t('app', 'validator.order_id.positive'));
+            $this->addError($model, $attribute, Yii::t('orders', 'validator.order_id.positive'));
         }
     }
 
@@ -69,7 +69,7 @@ class SearchValidator extends Validator
     private function validateLink(Model $model, string $attribute, string $value): void
     {
         if (!filter_var($value, FILTER_VALIDATE_URL)) {
-            $this->addError($model, $attribute, Yii::t('app', 'validator.link.invalid'));
+            $this->addError($model, $attribute, Yii::t('orders', 'validator.link.invalid'));
         }
     }
 
@@ -85,8 +85,8 @@ class SearchValidator extends Validator
         $length = mb_strlen($value);
 
         match (true) {
-            $length < 2 => $this->addError($model, $attribute, Yii::t('app', 'validator.username.too_short')),
-            $length > 50 => $this->addError($model, $attribute, Yii::t('app', 'validator.username.too_long')),
+            $length < 2 => $this->addError($model, $attribute, Yii::t('orders', 'validator.username.too_short')),
+            $length > 50 => $this->addError($model, $attribute, Yii::t('orders', 'validator.username.too_long')),
             default => null,
         };
     }

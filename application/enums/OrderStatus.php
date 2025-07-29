@@ -33,11 +33,6 @@ enum OrderStatus: int
      * Получить все возможные числовые значения перечисления
      *
      * @return int[] Массив числовых значений статусов
-     *
-     * @example
-     * ```php
-     * $values = OrderStatus::values(); // [0, 1, 2, 3, 4]
-     * ```
      */
     public static function values(): array
     {
@@ -48,20 +43,15 @@ enum OrderStatus: int
      * Получить локализованный лейбл для отображения в интерфейсе
      *
      * @return string Локализованное название статуса
-     *
-     * @example
-     * ```php
-     * $label = OrderStatus::PENDING->getLabel(); // "Ожидает" (если локаль ru)
-     * ```
      */
     public function getLabel(): string
     {
         return match($this) {
-            self::PENDING => Yii::t('orders', 'Pending'),
-            self::IN_PROGRESS => Yii::t('orders', 'In progress'),
-            self::COMPLETED => Yii::t('orders', 'Completed'),
-            self::CANCELLED => Yii::t('orders', 'Cancelled'),
-            self::FAILED => Yii::t('orders', 'Failed'),
+            self::PENDING => Yii::t('orders', 'status.pending'),
+            self::IN_PROGRESS => Yii::t('orders', 'status.in_progress'),
+            self::COMPLETED => Yii::t('orders', 'status.completed'),
+            self::CANCELLED => Yii::t('orders', 'status.canceled'),
+            self::FAILED => Yii::t('orders', 'status.failed'),
         };
     }
 
@@ -72,11 +62,6 @@ enum OrderStatus: int
      * которое безопасно использовать в URL-адресах.
      *
      * @return string URL slug статуса
-     *
-     * @example
-     * ```php
-     * $slug = OrderStatus::IN_PROGRESS->getSlug(); // "inprogress"
-     * ```
      */
     public function getSlug(): string
     {
@@ -92,12 +77,10 @@ enum OrderStatus: int
     /**
      * Получить все доступные slug'и статусов
      *
-     * @return string[] Массив всех slug'ов статусов
+     * Возвращает массив всех URL представлений статусов.
+     * Полезно для валидации входящих параметров из URL.
      *
-     * @example
-     * ```php
-     * $slugs = OrderStatus::getSlugs(); // ['pending', 'inprogress', ...]
-     * ```
+     * @return string[] Массив всех slug'ов статусов
      */
     public static function getSlugs(): array
     {
@@ -112,11 +95,6 @@ enum OrderStatus: int
      *
      * @param string $slug URL-friendly представление статуса
      * @return self|null Экземпляр перечисления или null, если slug не найден
-     *
-     * @example
-     * ```php
-     * $status = OrderStatus::fromSlug('pending'); // OrderStatus::PENDING
-     * ```
      */
     public static function fromSlug(string $slug): ?self
     {

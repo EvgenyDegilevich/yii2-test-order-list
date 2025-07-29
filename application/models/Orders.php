@@ -3,6 +3,7 @@
 namespace app\models;
 
 use Yii;
+use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use app\enums\OrderStatus;
 use app\enums\OrderMode;
@@ -36,29 +37,12 @@ class Orders extends ActiveRecord
         ];
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function attributeLabels(): array
-    {
-        return [
-            'id' => Yii::t('orders', 'ID'),
-            'user_id' => Yii::t('orders', 'User'),
-            'link' => Yii::t('orders', 'Link'),
-            'quantity' => Yii::t('orders', 'Quantity'),
-            'service_id' => Yii::t('orders', 'Service'),
-            'status' => Yii::t('orders', 'Status'),
-            'created_at' => Yii::t('orders', 'Created'),
-            'mode' => Yii::t('orders', 'Mode'),
-        ];
-    }
-
-    public function getUser(): \yii\db\ActiveQuery
+    public function getUser(): ActiveQuery
     {
         return $this->hasOne(Users::class, ['id' => 'user_id']);
     }
 
-    public function getService(): \yii\db\ActiveQuery
+    public function getService(): ActiveQuery
     {
         return $this->hasOne(Services::class, ['id' => 'service_id']);
     }
